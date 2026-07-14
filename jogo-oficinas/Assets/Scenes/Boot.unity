@@ -148,7 +148,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7ec1c220454f8e547bfee6bfa1920222, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::GameManager
-  menuScene: Menu
+  bootTime: 2
+  splashTime: 2
 --- !u!4 &1142318544
 Transform:
   m_ObjectHideFlags: 0
