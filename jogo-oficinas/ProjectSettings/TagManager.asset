@@ -8,6 +8,8 @@ TagManager:
   - coletavel
   - Inimigo
   - Coletavel
+  - npc
+  - "Painel de di\xE1logo"
   layers:
   - Default
   - TransparentFX
