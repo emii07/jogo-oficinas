@@ -1,8 +1,9 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.InputSystem; // IMPORTANTE: Nova biblioteca de Input
+using UnityEngine.InputSystem; // IMPORTANTE: Mantém a compatibilidade com o novo sistema
 
+[RequireComponent(typeof(Rigidbody2D))]
 public class PlayerController2D : MonoBehaviour
 {
     [Header("Movimentação Horizontal")]
@@ -35,18 +36,47 @@ public class PlayerController2D : MonoBehaviour
     {
         rb = GetComponent<Rigidbody2D>();
         anim = GetComponent<Animator>();
+
+        // CONFIGURAÇÕES DE FÍSICA CONTRA TREMORES E ROTAÇÕES INDESEJADAS
+        rb.interpolation = RigidbodyInterpolation2D.Interpolate; // Deixa o movimento suave na tela
+        rb.constraints = RigidbodyConstraints2D.FreezeRotation;   // Impede o player de cair deitado
     }
 
     void Update()
     {
-        // NOVO INPUT SYSTEM: Lê as setas ou A/D através do teclado atual
-        if (Keyboard.current != null)
+        // SISTEMA DE INPUT INTELIGENTE (Tenta ler o Novo Input, se der falha ou for nulo, usa o Clássico)
+        moveInput = 0f;
+        bool jumpPressed = false;
+        bool isHoldingJump = false;
+
+        try
         {
-            moveInput = 0f;
-            if (Keyboard.current.aKey.isPressed || Keyboard.current.leftArrowKey.isPressed) moveInput = -1f;
-            if (Keyboard.current.dKey.isPressed || Keyboard.current.rightArrowKey.isPressed) moveInput = 1f;
+            if (Keyboard.current != null)
+            {
+                // Leitura do Novo Input System
+                if (Keyboard.current.aKey.isPressed || Keyboard.current.leftArrowKey.isPressed) moveInput = -1f;
+                if (Keyboard.current.dKey.isPressed || Keyboard.current.rightArrowKey.isPressed) moveInput = 1f;
+
+                jumpPressed = Keyboard.current.spaceKey.wasPressedThisFrame;
+                isHoldingJump = Keyboard.current.spaceKey.isPressed;
+            }
+            else
+            {
+                // Fallback para o Input Clássico caso o Teclado do Novo Sistema não esteja ativo
+                moveInput = Input.GetAxisRaw("Horizontal");
+                jumpPressed = Input.GetKeyDown(KeyCode.Space);
+                isHoldingJump = Input.GetKey(KeyCode.Space);
+            }
+        }
+        catch
+        {
+            // Fallback de segurança absoluto
+            moveInput = Input.GetAxisRaw("Horizontal");
+            jumpPressed = Input.GetKeyDown(KeyCode.Space);
+            isHoldingJump = Input.GetKey(KeyCode.Space);
         }
 
+        // Verificação de chão
         isGrounded = Physics2D.OverlapBox(groundCheck.position, groundCheckSize, 0f, groundLayer);
 
         if (isGrounded)
@@ -58,16 +88,14 @@ public class PlayerController2D : MonoBehaviour
             coyoteTimeCounter -= Time.deltaTime;
         }
 
-        // NOVO INPUT SYSTEM: Detecta o clique inicial do Espaço
-        if (Keyboard.current != null && Keyboard.current.spaceKey.wasPressedThisFrame && coyoteTimeCounter > 0f)
+        // Mecânica de Pulo
+        if (jumpPressed && coyoteTimeCounter > 0f)
         {
             rb.linearVelocity = new Vector2(rb.linearVelocity.x, jumpForce);
             coyoteTimeCounter = 0f; 
         }
 
-        // Modificadores de Gravidade adaptados para checar se o Espaço continua segurado
-        bool isHoldingJump = Keyboard.current != null && Keyboard.current.spaceKey.isPressed;
-
+        // Modificadores de Gravidade (Pulo dinâmico)
         if (rb.linearVelocity.y < 0)
         {
             rb.gravityScale = fallMultiplier;
@@ -81,24 +109,28 @@ public class PlayerController2D : MonoBehaviour
             rb.gravityScale = 1f;
         }
 
+        // Animações
         if (anim != null)
         {
             anim.SetFloat("Speed", Mathf.Abs(rb.linearVelocity.x));
             anim.SetBool("isGrounded", isGrounded);
         }
 
+        // Inversão do Sprite (Flip)
         if (moveInput > 0 && !facingRight) Flip();
         else if (moveInput < 0 && facingRight) Flip();
     }
 
     void FixedUpdate()
     {
+        // MOVIMENTAÇÃO POR VELOCIDADE DE ALTA PRECISÃO (Evita travar nas paredes/platfomas)
         float targetSpeed = moveInput * maxSpeed;
         float speedDif = targetSpeed - rb.linearVelocity.x;
         float accelRate = (Mathf.Abs(targetSpeed) > 0.01f) ? acceleration : deceleration;
-        float movement = speedDif * accelRate;
         
-        rb.AddForce(movement * Vector2.right, ForceMode2D.Force);
+        float movement = Mathf.MoveTowards(rb.linearVelocity.x, targetSpeed, accelRate * Time.fixedDeltaTime);
+        
+        rb.linearVelocity = new Vector2(movement, rb.linearVelocity.y);
     }
 
     void Flip()
@@ -118,34 +150,29 @@ public class PlayerController2D : MonoBehaviour
         }
     }
     
-    // Essa função é chamada automaticamente quando o jogador encosta em um objeto com "Is Trigger" marcado (Coletável)
+    // Coletar itens (Triggers)
     private void OnTriggerEnter2D(Collider2D collision)
     {
         if (collision.CompareTag("Coletavel"))
         {
             Debug.Log("Pegou um coletável!");
-            
-            // Aqui você pode aumentar a pontuação do jogador no futuro
-            
-            Destroy(collision.gameObject); // Destrói a moeda da cena
+            Destroy(collision.gameObject); 
         }
     }
 
-    // Essa função é chamada quando o jogador colide fisicamente com algo (Inimigo)
+    // Colisão física com inimigos
     private void OnCollisionEnter2D(Collision2D collision)
     {
         if (collision.gameObject.CompareTag("Inimigo"))
         {
             Debug.Log("O jogador Morreu!");
-            
             Morrer();
         }
     }
 
-    // Função que lida com a morte do personagem
+    // Reiniciar a fase ao morrer
     void Morrer()
     {
-        // Por enquanto, vamos apenas reiniciar a fase atual
         UnityEngine.SceneManagement.SceneManager.LoadScene(
             UnityEngine.SceneManagement.SceneManager.GetActiveScene().name
         );
