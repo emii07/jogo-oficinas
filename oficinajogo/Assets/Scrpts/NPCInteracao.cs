@@ -1,74 +1,63 @@
 using UnityEngine;
-using UnityEngine.SceneManagement; // Importante para carregar a cena do mapa!
+using UnityEngine.SceneManagement; // Importante: adicionado para gerenciar a troca de cenas diretamente
 
-public class NPCInteracao : MonoBehaviour
+public class DialogoNPC : MonoBehaviour
 {
-    [Header("Configuração de Viagem")]
-    [Tooltip("Nome exato da cena para onde o jogador vai ao clicar no botão.")]
-    public string nomeDaCenaDoMapa = "mapa do jogo";
-
-    [Header("Interface do Diálogo (UI)")]
-    [Tooltip("Arraste aqui o seu 'Paneldefala' que contém o texto e os botões.")]
-    public GameObject painelDeViagem;
-
-    private bool playerEstaPerto = false;
+    [SerializeField] private GameObject painelDialogo;
+    [SerializeField] private string nomeDaProximaCena = "Jogo";
 
     private void Start()
     {
-        // Garante que o painel comece escondido
-        if (painelDeViagem != null)
-        {
-            painelDeViagem.SetActive(false);
-        }
+        // Garante que o painel comece fechado chamando a função correspondente
+        FecharPainel();
     }
 
-    // Quando o jogador entra na área do NPC
     private void OnTriggerEnter2D(Collider2D other)
     {
         if (other.CompareTag("Player"))
         {
-            playerEstaPerto = true;
-
-            if (painelDeViagem != null)
-            {
-                painelDeViagem.SetActive(true);
-            }
+            AbrirPainel();
         }
     }
 
-    // Quando o jogador sai da área do NPC
     private void OnTriggerExit2D(Collider2D other)
     {
         if (other.CompareTag("Player"))
         {
-            playerEstaPerto = false;
-
-            if (painelDeViagem != null)
-            {
-                painelDeViagem.SetActive(false);
-            }
+            FecharPainel();
         }
     }
 
-    // Botão Viajar
-    public void IrParaOMapa()
+    // --- FUNÇÕES DE CONTROLE DA INTERFACE ---
+
+    public void AbrirPainel()
     {
-        if (playerEstaPerto && !string.IsNullOrEmpty(nomeDaCenaDoMapa))
+        if (painelDialogo != null)
         {
-            SceneManager.LoadScene(nomeDaCenaDoMapa);
-        }
-        else
-        {
-            Debug.LogWarning("Não foi possível viajar.");
+            painelDialogo.SetActive(true);
         }
     }
 
-    // Botão Voltar/Fechar
-    public void FecharDialogo()
+    public void FecharPainel()
     {
-        if (painelDeViagem != null)
+        if (painelDialogo != null)
         {
-            painelDeViagem.SetActive(false);
+            painelDialogo.SetActive(false);
         }
+    }
+
+    // --- AÇÃO DO BOTÃO VIAJAR ---
+
+    public void Viajar()
+    {
+        // Validação simples: avisa se você esqueceu de dar um nome para a cena destino no Inspector
+        if (string.IsNullOrEmpty(nomeDaProximaCena))
+        {
+            Debug.LogError("ERRO: O campo 'Nome Da Proxima Cena' está vazio no Inspector do Guardião!");
+            return;
+        }
+
+        // Carrega a cena diretamente pelo sistema nativo, sem depender de GameManager
+        SceneManager.LoadScene(nomeDaProximaCena);
     }
 }

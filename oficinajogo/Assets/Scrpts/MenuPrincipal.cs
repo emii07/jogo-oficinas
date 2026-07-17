@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.SceneManagement; // Importante: adicionado para carregar as cenas diretamente
 
 public class MenuPrincipal : MonoBehaviour
 {
@@ -7,7 +8,8 @@ public class MenuPrincipal : MonoBehaviour
 
     public void IniciarJogo()
     {
-        GameManager.Instancia.CarregarCena("Jogo");
+        // Carrega a cena do jogo diretamente sem depender do GameManager
+        SceneManager.LoadScene("Jogo");
     }
 
     public void AbrirConfiguracoes()
@@ -24,6 +26,9 @@ public class MenuPrincipal : MonoBehaviour
 
     public void Sair()
     {
-        GameManager.Instancia.SairJogo();
+        Debug.Log("Saindo do jogo...");
+        
+        // Fecha o aplicativo/jogo de verdade (funciona após a Build do jogo)
+        Application.Quit();
     }
 }
